@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
@@ -24,11 +23,43 @@ const Dashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const sessionsData = await api.sessions.getAll();
-      const patientsData = await api.patients.getAll();
-      
-      setSessions(sessionsData || []);
-      setPatients(patientsData || []);
+      const sessionsResponse = await api.sessions.getAll();
+      const patientsResponse = await api.patients.getAll();
+
+      // Format sessions data
+      const formattedSessions = (sessionsResponse?.data || [])
+        .map((session) => {
+          if (!session) return null;
+
+          return {
+            id: session.id || "",
+            patient_id: session.patient_id || "",
+            patient_name: session.patient_name || "Unknown Patient",
+            created_at: session.created_at || new Date().toISOString(),
+          };
+        })
+        .filter(Boolean);
+
+      setSessions(formattedSessions);
+
+      // Format patient data to match PatientCard props
+      const formattedPatients = (patientsResponse?.data || [])
+        .map((patient) => {
+          if (!patient) return null;
+
+          const user = patient.users;
+          return {
+            id: patient.id || "",
+            name: user
+              ? `${user.first_name} ${user.last_name}`
+              : "Unknown Patient",
+            dob: patient.date_of_birth || "",
+            createdAt: patient.created_at || new Date().toISOString(),
+          };
+        })
+        .filter(Boolean);
+
+      setPatients(formattedPatients);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({
@@ -53,19 +84,17 @@ const Dashboard = () => {
   }
 
   const getSessionCountForPatient = (patientId: string) => {
-    return sessions.filter(s => s.patient_id === patientId).length;
+    if (!sessions || !Array.isArray(sessions)) return 0;
+    return sessions.filter((s) => s.patient_id === patientId).length;
   };
 
-  const handleNewSessionForPatient = async (patientId: string, patientName: string) => {
+  const handleNewSessionForPatient = async (
+    patientId: string,
+    patientName: string
+  ) => {
     try {
-      await api.sessions.create({
-        patient_id: patientId,
-        patient_name: patientName
-      });
-      
-      // Refresh data
+      await api.sessions.create({ patient_id: patientId });
       fetchData();
-      
       toast({
         title: "Success",
         description: `New session created for ${patientName}`,
@@ -83,18 +112,17 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex flex-col bg-medical-background">
       <Navbar />
-      
+
       <main className="flex-1 container mx-auto py-8 px-4">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold text-gray-800">Medical Records</h1>
           <Button
             onClick={() => setShowNewSessionForm(!showNewSessionForm)}
-            className="bg-medical-primary"
-          >
+            className="bg-medical-primary">
             {showNewSessionForm ? "Cancel" : "New Session"}
           </Button>
         </div>
-        
+
         {showNewSessionForm && (
           <div className="mb-8">
             <NewSessionForm
@@ -105,7 +133,7 @@ const Dashboard = () => {
             />
           </div>
         )}
-        
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="sessions" className="flex items-center">
@@ -117,7 +145,7 @@ const Dashboard = () => {
               Patients
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="sessions">
             {loading ? (
               // Loading skeleton
@@ -156,14 +184,13 @@ const Dashboard = () => {
                 </p>
                 <Button
                   onClick={() => setShowNewSessionForm(true)}
-                  className="bg-medical-primary"
-                >
+                  className="bg-medical-primary">
                   Create First Session
                 </Button>
               </div>
             )}
           </TabsContent>
-          
+
           <TabsContent value="patients">
             {loading ? (
               // Loading skeleton
@@ -187,7 +214,7 @@ const Dashboard = () => {
                     id={patient.id}
                     name={patient.name}
                     dob={patient.dob}
-                    createdAt={patient.created_at}
+                    createdAt={patient.createdAt}
                     sessionCount={getSessionCountForPatient(patient.id)}
                     onNewSession={handleNewSessionForPatient}
                   />
@@ -204,8 +231,7 @@ const Dashboard = () => {
                 </p>
                 <Button
                   onClick={() => setShowNewSessionForm(true)}
-                  className="bg-medical-primary"
-                >
+                  className="bg-medical-primary">
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Add First Patient
                 </Button>

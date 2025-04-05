@@ -5,8 +5,15 @@ const API_BASE_URL = "http://localhost:8000/api";
 // Helper function to handle API responses
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || "An error occurred with the API request");
+    let errorMessage = "An error occurred with the API request";
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.error || errorData.detail || errorMessage;
+    } catch (e) {
+      // If we can't parse the error as JSON, use the status text
+      errorMessage = response.statusText || errorMessage;
+    }
+    throw new Error(errorMessage);
   }
   return response.json();
 };
@@ -24,6 +31,43 @@ const handleApiError = (error: Error, customMessage?: string) => {
 
 // API service object with methods for each endpoint
 export const api = {
+  // Auth endpoints
+  auth: {
+    login: async (email: string, password: string) => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
+        });
+        return handleResponse(response);
+      } catch (error) {
+        return handleApiError(error as Error, "Failed to login");
+      }
+    },
+
+    register: async (
+      email: string,
+      password: string,
+      role: "doctor" | "patient"
+    ) => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/register`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password, role }),
+        });
+        return handleResponse(response);
+      } catch (error) {
+        return handleApiError(error as Error, "Failed to register");
+      }
+    },
+  },
+
   // Patients endpoints
   patients: {
     getAll: async () => {
@@ -35,22 +79,21 @@ export const api = {
       }
     },
 
-    create: async (patientData: { name: string; dob?: string }) => {
+    create: async (patientData: {
+      first_name: string;
+      last_name: string;
+      email: string;
+      password: string;
+      dob?: string;
+    }) => {
       try {
-        // For demo purposes, using a hardcoded doctor_id
-        // In a real app, this would come from the authenticated user
-        const doctor_id = "123e4567-e89b-12d3-a456-426614174000";
-
         const response = await fetch(`${API_BASE_URL}/patients`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
           },
-          body: JSON.stringify({
-            ...patientData,
-            doctor_id,
-          }),
+          body: JSON.stringify(patientData),
         });
         return handleResponse(response);
       } catch (error) {
