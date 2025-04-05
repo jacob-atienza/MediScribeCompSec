@@ -10,6 +10,9 @@ def register_user(email, password, role):
         return jsonify({'error': 'Email already exists'}), 400
     
     user = create_user(email, password, role)
+    if not user.data:
+        return jsonify({'error': 'Failed to create user'}), 500
+    
     return jsonify(user.data[0]), 201
 
 def login_user(email, password):

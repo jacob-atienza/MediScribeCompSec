@@ -5,10 +5,11 @@ from services.auth_service import register_user, login_user
 app = Blueprint('auth', __name__)
 
 @app.route('/register', methods=['POST', 'OPTIONS'])
-@cross_origin()
+@cross_origin(supports_credentials=True, origins=['http://localhost:8080'])
 def register():
     if request.method == 'OPTIONS':
         return jsonify({}), 200
+        
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
@@ -23,10 +24,11 @@ def register():
     return register_user(email, password, role)
 
 @app.route('/login', methods=['POST', 'OPTIONS'])
-@cross_origin()
+@cross_origin(supports_credentials=True, origins=['http://localhost:8080'])
 def login():
     if request.method == 'OPTIONS':
         return jsonify({}), 200
+        
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
